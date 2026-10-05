@@ -261,30 +261,42 @@ export default class ShellCommandCtr extends ControllerModule {
         ),
       },
     };
-    if (SIMPLE_LH_PREFIX.test(params.command)) {
-      const cliCtr = this.app.getController(CliCtr);
-      if (cliCtr) {
-        // Deliberate carve-out: `lh` keeps its in-app route even for a
-        // sandboxed run. It is LobeHub's own control-plane CLI — it needs the
-        // injected `LOBEHUB_JWT` and the server it talks to, both of which the
-        // sandbox strips (env allowlist) and blocks (no network). Sandboxing it
-        // would not harden anything the model can reach through it; it would
-        // just break agent self-management. The sandbox's promise is about
-        // model-authored shell commands, and this is not one.
-        //
-        // Otherwise it is an ordinary command: same shell (PowerShell on
-        // Windows), the caller's `cwd` / `env` / `timeout`, and the same result
-        // shape — a non-zero exit carries its output, and a command still
-        // running at the deadline is reported as running, not killed. Only the
-        // environment differs: the bundled CLI first on `PATH`, plus the
-        // credentials it authenticates with.
-        logger.debug('Running lh command with the embedded CLI environment');
-        const env = await cliCtr.buildCliEnv(params.env);
-        return runCommand({ ...params, env }, { logger, processManager, spawnProcess });
-      }
+    const cliCtr = this.app.getController(CliCtr);
+    if (cliCtr && SIMPLE_LH_PREFIX.test(params.command)) {
+      // Deliberate carve-out: `lh` keeps its in-app route even for a
+      // sandboxed run. It is LobeHub's own control-plane CLI — it needs the
+      // injected `LOBEHUB_JWT` and the server it talks to, both of which the
+      // sandbox strips (env allowlist) and blocks (no network). Sandboxing it
+      // would not harden anything the model can reach through it; it would
+      // just break agent self-management. The sandbox's promise is about
+      // model-authored shell commands, and this is not one.
+      //
+      // Otherwise it is an ordinary command: same shell (PowerShell on
+      // Windows), the caller's `cwd` / `env` / `timeout`, and the same result
+      // shape — a non-zero exit carries its output, and a command still
+      // running at the deadline is reported as running, not killed. Only the
+      // environment differs: the bundled CLI first on `PATH`, plus the
+      // credentials it authenticates with.
+      logger.debug('Running lh command with the embedded CLI environment');
+      const env = await cliCtr.buildCliEnv(params.env);
+      return runCommand({ ...params, env }, { logger, processManager, spawnProcess });
     }
 
-    if (!params.sandbox) return runCommand(params, { logger, processManager, spawnProcess });
+    if (!params.sandbox) {
+      // Every unsandboxed command gets the CLI environment, not only one that
+      // starts with `lh`. Models just as often reach the CLI from inside a
+      // larger command — `echo …; lh …`, `if lh whoami …`, `$x = lh …`, a loop,
+      // or a script that shells out to it — and without the injected
+      // `LOBEHUB_JWT` those fell back to the device's own stored login, which
+      // on most devices is missing or long expired: "No authentication found"
+      // or `invalid_grant`, alternating with successes depending only on how
+      // the model happened to shape each command. Matching `lh` anywhere in
+      // the text would still miss a script file that calls it, so the
+      // environment is not gated at all. It carries nothing a prefixed `lh`
+      // command could not already read (`lh whoami; env`).
+      const env = cliCtr ? await cliCtr.buildCliEnv(params.env) : params.env;
+      return runCommand({ ...params, env }, { logger, processManager, spawnProcess });
+    }
 
     // Sandboxed run. The policy is scoped to the run's working directory, so
     // without one there is nothing to scope to — refuse rather than fall back
