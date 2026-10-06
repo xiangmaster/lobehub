@@ -10,7 +10,7 @@ jobs:
     timeout-minutes: 10
     # Only run on specific migration feedback issues and not on bot/maintainer comments
     if: |
-      (github.event.issue.number == 11757 || github.event.issue.number == 11707) &&
+      (github.event.issue.number == 1) &&
       !contains(github.event.comment.user.login, '[bot]') &&
       github.event.comment.user.login != 'claude-bot' &&
       github.event.comment.user.login != 'tjx666' &&
@@ -32,6 +32,10 @@ jobs:
       - name: Run Claude Code for Migration Support
         id: claude
         uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_BASE_URL: https://api.openlux.ai
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
+          ANTHROPIC_MODEL: claude-sonnet-4-6
         with:
           github_token: ${{ secrets.GH_TOKEN }}
           allowed_non_write_users: '*'
