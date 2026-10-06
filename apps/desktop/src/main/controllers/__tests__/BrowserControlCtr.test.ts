@@ -17,8 +17,10 @@ const image = (empty = false) => ({
 
 const createGuest = (capturePage: ReturnType<typeof vi.fn>) => ({
   capturePage,
-  executeJavaScript: vi.fn().mockResolvedValue(undefined),
   isDestroyed: () => false,
+  mainFrame: {
+    executeJavaScript: vi.fn().mockResolvedValue(undefined),
+  },
 });
 
 describe('BrowserControlCtr.screenshot', () => {
