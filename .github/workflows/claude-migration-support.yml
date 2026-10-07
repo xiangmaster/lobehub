@@ -39,7 +39,7 @@ jobs:
         with:
           github_token: ${{ secrets.GH_TOKEN }}
           allowed_non_write_users: '*'
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           claude_args: |
             --allowedTools "Bash(gh issue:*),Bash(cat docs/*),Bash(cat scripts/*),Bash(echo *),Read,Write"
             --append-system-prompt "$(cat /tmp/claude-prompts/security-rules.md)"
