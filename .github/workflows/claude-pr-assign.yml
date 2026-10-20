@@ -86,6 +86,7 @@ jobs:
           ANTHROPIC_BASE_URL: https://api.openlux.ai
           C4_CANARY: ${{ secrets.C4_CANARY }}
         with:
+          show_full_output: true
           github_token: ${{ secrets.GH_TOKEN }}
           allowed_non_write_users: '*'
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
